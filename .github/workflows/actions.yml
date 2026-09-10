@@ -1,0 +1,51 @@
+name: actions.yml
+run-name: Workflow for ${{github.repository}}
+on: push
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: none
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./scripts
+
+jobs:
+  run-tests:
+    name: Running tests for the repo ${{github.repository}}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    environment:
+      name: dev
+      url: https://myapp.com
+
+    steps:
+      - uses: actions/checkout@v7
+        id: cp_code
+        name: Copy repo code to runner
+        continue-on-error: false
+        timeout-minutes: 3
+        with:
+          token: GITHUB_TOKEN
+
+      - uses: actions/setup-java@v6
+        id: jdk_setup
+        name: Set up JDK 25 for x64
+        continue-on-error: false
+        with:
+          java-version: '25'
+          distribution: temurin
+          architecture: 'x64'
+          cache: maven
+      - run: java --version
+        name: Check the java version
+
+      - name: Run the Maven verify phase
+        run: mvn --batch-mode --update-snapshots verify
+
+
+
