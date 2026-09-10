@@ -30,7 +30,7 @@ jobs:
         continue-on-error: false
         timeout-minutes: 3
         with:
-          token: GITHUB_TOKEN
+          token: ${{ env.GITHUB_TOKEN }}
 
       - uses: actions/setup-java@v6
         id: jdk_setup
