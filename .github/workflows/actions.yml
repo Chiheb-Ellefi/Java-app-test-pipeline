@@ -41,11 +41,19 @@ jobs:
           distribution: temurin
           architecture: 'x64'
           cache: maven
-      - run: java --version
-        name: Check the java version
+
+      - name: Check the java version
+        run: java --version
 
       - name: Run the Maven verify phase
         run: mvn --batch-mode --update-snapshots verify
+      - name: Packaging workflow data as artifacts
+        run: mkdir staging && cp target/*.jar staging
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package
+          path: staging
+
 
 
 
