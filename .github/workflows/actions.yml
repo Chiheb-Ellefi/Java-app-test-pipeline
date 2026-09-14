@@ -1,59 +1,112 @@
-name: actions.yml
+# actions.yml
+# This is a GitHub Actions workflow definition file. It lives under .github/workflows/
+# and GitHub automatically detects and runs it based on the "on:" triggers below.
+
+# Customizes the label shown for a run in the Actions tab UI (instead of just the commit message).
+# Here it dynamically inserts the repo's full name (owner/repo) using GitHub context syntax.
 run-name: Workflow for ${{github.repository}}
+
+# Defines what event(s) trigger this workflow.
+# "push" means this workflow runs automatically every time someone pushes a commit
+# to any branch in this repository (no branch filter specified here).
 on: push
 
+# Sets the default permissions granted to the GITHUB_TOKEN (the auto-generated token
+# GitHub provides for API calls during the run). This follows the principle of least privilege.
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-  actions: none
+  contents: read        # Allows reading repo contents (needed for checkout), but not writing/pushing
+  issues: write          # Allows creating/editing issues (e.g. if a step wants to comment on one)
+  pull-requests: write   # Allows creating/editing PR comments or statuses
+  actions: none          # Explicitly denies access to the Actions API (e.g. can't manage workflows/artifacts via API this way)
 
+# Sets default values applied to every "run:" step in the workflow, unless overridden locally.
 defaults:
   run:
-    shell: bash
+    shell: bash   # Forces all "run:" steps to execute using bash, regardless of runner OS default
 
-
+# "jobs:" defines one or more independent units of work. Each job runs on its own fresh virtual machine (runner).
 jobs:
-  run-tests:
+  run-tests:  # This is the job's ID (internal identifier, used to reference it elsewhere, e.g. in "needs:")
     name: Running tests for the repo ${{github.repository}}
+    # Friendly display name shown in the Actions UI instead of the job ID above
+
     runs-on: ubuntu-latest
+    # Specifies the runner's OS/image — here, GitHub's latest hosted Ubuntu Linux VM
+
     env:
+      # Environment variables available to all steps in this job.
+      # Here it stores the GitHub Actions default token into a custom env var for convenience.
       GITHUB_TOKEN: ${{ github.token }}
+
     environment:
-      name: dev
+      # Links this job to a GitHub "Environment" (configured in repo settings),
+      # which can enforce protection rules (approvals, secrets scoping, wait timers, etc.)
+      name: dev            # Name of the environment being targeted ("dev")
       url: my_test_application
+      # Optional: a URL shown on the deployment summary (e.g. link to the deployed app)
 
     steps:
+      # "steps:" is the ordered sequence of tasks executed within this job, top to bottom.
+
       - uses: actions/checkout@v7
+        # "uses:" runs a prebuilt, reusable Action from the marketplace (here: official checkout action).
+        # This action clones/downloads the repository's code onto the runner's filesystem,
+        # since runners start empty and have no access to your code by default.
         id: cp_code
+        # "id:" gives this step a reference name, so later steps can access its outputs
+        # (e.g. ${{ steps.cp_code.outputs.something }})
         name: Copy repo code to runner
+        # Friendly display name for this step in the UI
         continue-on-error: false
+        # If this step fails, the whole job stops and is marked as failed (false = do not continue)
         timeout-minutes: 3
+        # If this step takes longer than 3 minutes, GitHub will forcibly cancel it and fail the job
         with:
+          # "with:" passes input parameters to the action being used
           token: ${{ env.GITHUB_TOKEN }}
+          # Passes the GitHub token to checkout, used for authentication when cloning
+          # (needed for private repos or to enable further authenticated git operations)
 
       - uses: actions/setup-java@v6
+        # Official action that installs and configures a specific JDK version on the runner
         id: jdk_setup
         name: Set up JDK 25 for x64
         continue-on-error: false
         with:
           java-version: '25'
+          # Specifies which Java version to install
           distribution: temurin
+          # Specifies which JDK vendor/build to use (Temurin = Eclipse Adoptium's OpenJDK builds)
           architecture: 'x64'
+          # Specifies the CPU architecture for the JDK binary (64-bit)
           cache: maven
+          # Enables automatic caching of Maven's local dependency repository (~/.m2)
+          # between workflow runs, to speed up future builds by avoiding re-downloading dependencies
 
       - name: Check the java version
         run: java --version
+        # A simple inline shell command step (not a reusable action).
+        # Runs "java --version" to confirm the JDK was installed correctly and print its version to the log
 
       - name: Run the Maven verify phase
         run: mvn --batch-mode --update-snapshots verify
+        # Runs Maven's "verify" lifecycle phase, which compiles the code, runs tests,
+        # and checks the build meets quality/integration requirements.
+        # --batch-mode: disables interactive prompts (needed since there's no human to respond)
+        # --update-snapshots: forces Maven to fetch the latest SNAPSHOT dependency versions
+        # instead of using potentially stale cached ones
+
       - name: Packaging workflow data as artifacts
         run: mkdir staging && cp target/*.jar staging
+        # Creates a "staging" directory, then copies all built .jar files
+        # from Maven's default output folder ("target/") into it,
+        # preparing them to be uploaded as a workflow artifact
+
       - uses: actions/upload-artifact@v7
+        # Official action that uploads files from the runner to GitHub's artifact storage,
+        # making them downloadable/reusable by other jobs or workflows later
         with:
           name: package
+          # The name given to this artifact bundle (used later to download it, e.g. actions/download-artifact)
           path: staging
-
-
-
-
+          # The path (file, folder, or glob pattern) on the runner to upload — here, the whole "staging" folder
