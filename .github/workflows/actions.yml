@@ -110,3 +110,17 @@ jobs:
           # The name given to this artifact bundle (used later to download it, e.g. actions/download-artifact)
           path: staging
           # The path (file, folder, or glob pattern) on the runner to upload — here, the whole "staging" folder
+
+  hello_world_job:
+    runs-on: ubuntu-latest
+    name: A job that says hello
+    steps:
+      - uses: actions/checkout@v7
+      - id: greeting
+        uses: ./.github/actions/hello-world-composite-action
+        with:
+          who-to-greet: Chiheb Ellefi
+      - run: echo random-number "$RANDOM_NUMBER"
+        shell: bash
+        env:
+          RANDOM_NUMBER: ${{steps.greeting.outputs.random-number}}
