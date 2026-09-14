@@ -9,6 +9,7 @@ outputs:
   random-number:
     description: 'Random number'
     value: ${{steps.random-number-generator.outputs.random-number}}
+
 runs:
   using: composite
   steps:
@@ -28,7 +29,7 @@ runs:
       run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
       shell: bash
       env:
-        GITHUB_ACTION_PATH = ${{github.action_path}}
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
 
     - name: Run the goodbye script
       run: goodbye.sh
