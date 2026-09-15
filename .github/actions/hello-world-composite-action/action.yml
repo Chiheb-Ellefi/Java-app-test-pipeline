@@ -18,7 +18,7 @@ runs:
       run: echo "Hello $INPUT_WHO_TO_GREET."
       shell: bash
       env:
-        INPUT_WHO_TO_GREET: ${{inputs.who-to-greet}}
+        INPUT_WHO_TO_GREET: ${{secrets.USERNAME}}
 
     - name: Random Number Generator
       id: random-number-generator
