@@ -119,7 +119,7 @@ jobs:
       - id: greeting
         uses: ./.github/actions/hello-world-composite-action
         with:
-          who-to-greet: Chiheb Ellefi
+          who-to-greet: ${{secrets.USERNAME}}
       - run: echo random-number "$RANDOM_NUMBER"
         shell: bash
         env:
