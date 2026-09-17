@@ -1,4 +1,4 @@
-# actions.yml
+# main_workflow.yml
 # This is a GitHub Actions workflow definition file. It lives under .github/workflows/
 # and GitHub automatically detects and runs it based on the "on:" triggers below.
 
