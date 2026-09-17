@@ -2,11 +2,12 @@ name: Publish the package to github registry and dockerhub
 
 on:
   release:
-    types: [published]
+    types: [published,prereleased]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{github.repository}}
+  DOCKERHUB_IMAGE_NAME: java-app-test-pipeline
 
 jobs:
   build-and-push-image:
@@ -37,8 +38,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: |
-            chihebellefi888515/${{env.IMAGE_NAME}}
-            ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
+            chihebellefi888515/${{ env.DOCKERHUB_IMAGE_NAME }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       
       - name: Build and push Docker images
         id: push
