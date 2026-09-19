@@ -10,10 +10,17 @@ jobs:
     permissions:
       issues: write
     steps:
-      - name: Add label
-        run: gh issue edit "$NUMBER" --add-label "$LABELS"
+      - name: Create label
+        run: gh label create "$LABEL" --color "ededed" --force
+        env:
+          LABEL: chiellini
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GH_REPO: ${{github.repository}}
+
+      - name: Add label to an issue
+        run: gh issue edit "$NUMBER" --add-label "$LABEL"
         env:
           NUMBER: ${{ github.event.issue.number }}
-          LABELS: chiellini
+          LABEL: chiellini
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
           GH_REPO: ${{github.repository}}
