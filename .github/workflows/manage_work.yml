@@ -1,4 +1,5 @@
 name: label issues
+run-name: Add label to issue
 on:
   issues:
     types:
