@@ -1,23 +1,108 @@
+# ============================================================================
+# WORKFLOW: close_inactive_issues.yml
+# PURPOSE: Runs on a daily schedule (cron) and uses the official "stale"
+#          action to mark inactive issues as "stale" and eventually close
+#          them. Pull requests are explicitly EXCLUDED from this behavior.
+# ============================================================================
+
 name: close_inactive_issues.yml
+# "name:" — Workflow's display name in the Actions tab. Note: naming it with
+# the ".yml" extension included is unusual/not required — this is just a
+# stylistic choice some people use so the displayed name matches the filename
+# exactly. GitHub does not require or expect the extension here.
+
 run-name: Close inactive issues
+# "run-name:" — Display name for each individual run of this workflow,
+# shown in the run history instead of a generic default.
+
 on:
   schedule:
+    # "schedule:" — Triggers this workflow automatically at fixed times,
+    # independent of any push/PR/issue activity. GitHub Actions schedules
+    # run on GitHub's own infrastructure clock, NOT guaranteed to the minute —
+    # under high load, scheduled runs can be delayed.
     - cron: "36 6 * * *"
+      # Cron syntax: minute hour day-of-month month day-of-week
+      # "36 6 * * *" = run at 06:36 UTC every day, every month, every weekday.
+      # ALWAYS interpreted in UTC, regardless of repo/org timezone settings.
+      # The odd non-round minute (36) is a common recommendation from GitHub
+      # to avoid every workflow in the world firing exactly on the hour,
+      # which causes load spikes/delays on GitHub's scheduler.
+      # You can define multiple "- cron:" entries under "schedule:" to run
+      # at several different times.
+      # NOTE: scheduled workflows only run on the default branch (e.g. main),
+      # using whatever workflow file version exists there.
 
 jobs:
   close_issue:
+    # Job ID (internal identifier for this job).
+
     runs-on: ubuntu-latest
+    # Runner OS/image for this job.
+
     permissions:
       issues: write
+      # Needed so the stale action can add labels, post comments, and close
+      # issues.
       pull-requests: write
+      # Needed so the stale action can also (optionally) act on pull requests
+      # if PR staleness were enabled — included here even though this specific
+      # config disables PR staleness (see days-before-pr-* below), likely
+      # kept for consistency/future-proofing.
+
     steps:
       - uses: actions/stale@v11
+        # "uses:" — Runs a prebuilt, reusable, official GitHub Action that
+        # implements the entire "find inactive issues/PRs, label them stale,
+        # then close them after more inactivity" logic, so you don't have to
+        # write that logic by hand. "@v11" pins the version — always pin to a
+        # major (or better, full) version rather than using an unpinned or
+        # "main"/"latest" reference, for reproducibility and supply-chain safety.
+
         with:
+          # "with:" — Input parameters passed into the stale action. The stale
+          # action has many more inputs than shown here; this is a subset.
+
           days-before-issue-stale: 1
+          # Number of days of inactivity on an issue before it's marked stale
+          # (gets the stale label + stale message posted). Here set very low
+          # (1 day) — likely for testing/demo purposes; typical production
+          # values are 30, 60, or 90.
+
           days-before-issue-close: 1
+          # Number of days AFTER being marked stale before the issue is
+          # automatically closed (if no further activity occurs). Also set
+          # to 1 here for the same reason.
+
           stale-issue-label: 'stale'
+          # The label applied to an issue once it's flagged as stale. If this
+          # label doesn't already exist in the repo, the action creates it.
+
           stale-issue-message: "This issue is stale because it has been open for 30 days with no activity."
+          # Comment automatically posted on the issue the moment it's marked
+          # stale. NOTE: this message text says "30 days" but the actual
+          # configured value above is 1 day — a mismatch worth fixing if you
+          # ever raise days-before-issue-stale back up to a real value, since
+          # the message is just a hardcoded string and won't auto-update.
+
           close-issue-message: "This issue was closed because it has been inactive for 14 days since being marked as stale."
+          # Comment posted when the issue is actually closed. Same note as
+          # above — text says "14 days" but days-before-issue-close is set to 1;
+          # keep these two numbers in sync with their messages manually.
+
           days-before-pr-stale: -1
+          # Same concept as days-before-issue-stale, but for Pull Requests.
+          # A value of -1 DISABLES staleness checks for PRs entirely — PRs
+          # will never be marked stale by this workflow, regardless of
+          # inactivity. This is how you scope the stale action to issues only.
+
           days-before-pr-close: -1
+          # Same idea — disables auto-closing of PRs for inactivity.
+
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Token the stale action uses to authenticate its API calls
+          # (list issues, add labels, post comments, close issues). Uses the
+          # same auto-generated, auto-expiring GITHUB_TOKEN as before, scoped
+          # by the "permissions:" block above. This is a "with:" input specific
+          # to this action (named "repo-token"), as opposed to the raw
+          # GH_TOKEN/env approach used in the gh-CLI-based workflow.

@@ -110,6 +110,13 @@ jobs:
           # The name given to this artifact bundle (used later to download it, e.g. actions/download-artifact)
           path: staging
           # The path (file, folder, or glob pattern) on the runner to upload — here, the whole "staging" folder
+          retention-days: 5
+          # How many days GitHub keeps this artifact before automatically deleting it.
+          # Overrides the repo/org default retention setting (commonly 90 days) for
+          # this specific artifact only. Must be a value between 1 and the max allowed
+          # by the repository/org/enterprise setting — you can shorten it here but not
+          # exceed that ceiling. Useful for artifacts you only need short-term (e.g.
+          # debug builds, PR previews) to save storage space/cost.
 
   hello_world_job:
     runs-on: ubuntu-latest

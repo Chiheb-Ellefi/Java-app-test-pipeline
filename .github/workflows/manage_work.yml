@@ -1,20 +1,107 @@
+# ============================================================================
+# WORKFLOW: label_issues.yml
+# PURPOSE: Automatically adds a "bug" label to any issue that is opened
+#          or reopened, using the GitHub CLI (gh) instead of a marketplace action.
+# ============================================================================
+
 name: label issues
+# "name:" — The display name of the WORKFLOW itself, shown at the top of the
+# Actions tab and in the list of workflows in the sidebar. Purely cosmetic,
+# does not affect execution. If omitted, GitHub falls back to showing the
+# workflow file's path relative to the repo root.
+
 run-name: Add label to issue
+# "run-name:" — The display name for a SPECIFIC RUN of this workflow (shown
+# in the run history list instead of the default "label issues #12").
+# Can include expressions, e.g. `run-name: Add label to issue #${{ github.event.issue.number }}`
+# to make each run individually identifiable. Optional — if omitted, GitHub
+# generates a default name based on event info (commit message, etc.).
+
 on:
+  # "on:" — Defines what triggers this workflow. Can be a single event, a list
+  # of events, or (as here) a map of events each with their own filters.
   issues:
+    # Triggers on activity related to GitHub Issues (not Pull Requests — those
+    # use a separate "pull_request" event even though PRs are technically issues
+    # under the hood).
     types:
+      # "types:" — Narrows which specific issue ACTIVITY types fire this workflow.
+      # Without "types:", ALL issue activity types would trigger it (opened,
+      # closed, edited, assigned, labeled, milestoned, etc. — there are ~15).
       - reopened
+      # Fires when a previously closed issue is reopened.
       - opened
+      # Fires when a brand new issue is created.
+
 jobs:
+  # "jobs:" — Container for one or more jobs. Each job runs in its own fresh
+  # virtual machine (or container) and, by default, jobs run in PARALLEL
+  # unless linked with "needs:".
+
   label_issues:
+    # This is the JOB ID — an internal identifier (no spaces, used as a YAML
+    # key) used to reference this job elsewhere in the file, e.g. in another
+    # job's `needs: label_issues`. Not shown to users directly; the "name:"
+    # field below (if present) would be the human-friendly display version.
+
     runs-on: ubuntu-latest
+    # "runs-on:" — Specifies which runner OS/image executes this job.
+    # Common values: ubuntu-latest, windows-latest, macos-latest, or a pinned
+    # version like ubuntu-22.04. Can also target self-hosted runners via
+    # labels, e.g. runs-on: [self-hosted, linux, x64].
+
     permissions:
+      # "permissions:" — Sets the access scopes for the automatically-generated
+      # GITHUB_TOKEN used in this job. By default, GITHUB_TOKEN often has broad
+      # read/write permissions (varies by repo settings), so explicitly scoping
+      # it down here is a security best practice (principle of least privilege).
+      # If you only list some scopes, all unlisted scopes are implicitly set to
+      # "none" — so this job's token can ONLY do what's listed below.
       issues: write
+      # Grants write access to Issues (needed to add labels, comment, close,
+      # etc.). Without this, `gh issue edit` below would fail with a 403.
+      # Other possible scopes include: contents, pull-requests, actions,
+      # checks, deployments, packages, statuses, id-token, and more —
+      # each can be set to "read", "write", or "none".
+
     steps:
+      # "steps:" — Ordered list of tasks that run sequentially within this job,
+      # sharing the same runner filesystem and workspace.
+
       - name: Add label to an issue
+        # "name:" at the STEP level — friendly label shown in the run's log
+        # UI for this specific step (different from the job-level or
+        # workflow-level "name:" fields above).
+
         run: gh issue edit "$NUMBER" --add-label "$LABEL"
+        # "run:" — Executes a shell command directly (as opposed to "uses:"
+        # which calls a reusable prebuilt Action). This uses "gh", the GitHub
+        # CLI, which comes PRE-INSTALLED on GitHub-hosted runners — no setup
+        # step needed. `gh issue edit <number> --add-label <label>` adds the
+        # given label to the given issue number.
+        # $NUMBER and $LABEL are shell variables populated from the "env:"
+        # block below.
+
         env:
+          # "env:" at the STEP level — environment variables available only
+          # to this step's "run:" command (as opposed to a job-level or
+          # workflow-level "env:" block, which would apply more broadly).
           NUMBER: ${{ github.event.issue.number }}
+          # Pulls the issue number from the event payload that triggered this
+          # run. "github.event" gives you the full JSON payload of whatever
+          # triggered the workflow — here, the issue that was opened/reopened.
           LABEL: bug
+          # Hardcoded label name to apply. Could be parameterized further
+          # (e.g. via workflow_dispatch inputs) if you wanted this reusable
+          # for different labels.
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          # The GitHub CLI (gh) requires GH_TOKEN (or GITHUB_TOKEN) to be set
+          # in the environment to authenticate its API calls. "secrets.GITHUB_TOKEN"
+          # is a special, automatically-created token (NOT something you add
+          # manually to repo secrets) — GitHub generates and injects it fresh
+          # for every workflow run, scoped by the "permissions:" block above,
+          # and it expires when the job finishes.
           GH_REPO: ${{github.repository}}
+          # Tells the gh CLI which repo to operate on, in "owner/repo" format.
+          # "github.repository" is a default context variable always available,
+          # automatically set to the current repo — no need to hardcode it.

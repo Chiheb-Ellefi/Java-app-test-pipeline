@@ -1,27 +1,92 @@
+# ============================================================================
+# WORKFLOW: add_comment.yml
+# PURPOSE: When an issue gets labeled, checks if the label was specifically
+#          "bug" — if so, posts an automated welcome/instruction comment.
+#          Demonstrates event filtering with "if:" at the job level, and a
+#          multiline string value in "env:".
+# ============================================================================
+
 name: add_comment.yml
+# Workflow display name (again includes the .yml suffix by choice, not
+# requirement — purely stylistic/matches the filename).
+
 run-name: Add comment to issue
+# Per-run display name shown in the Actions run history.
+
 on:
   issues:
     types:
       - labeled
+      # Fires ONLY when a label is added to an issue (not on open, close,
+      # edit, etc.). Note this also fires for EVERY label added, not just
+      # "bug" — that's why the job-level "if:" condition below exists, to
+      # filter further down to the specific label we care about.
 
 jobs:
   add-comment:
+    # Job ID. Dashes are fine in job IDs (unlike some other identifier
+    # contexts in YAML/Actions).
+
     if: github.event.label.name == 'bug'
+    # "if:" at the JOB level — a conditional expression evaluated BEFORE the
+    # job runs. If it evaluates to false, the entire job is SKIPPED (shown as
+    # "skipped" in the UI, not "failed"). Here, "github.event.label.name" is
+    # only populated because the triggering event type is "labeled" (see
+    # above) — it holds the name of the label that was just added. This means
+    # the job only actually executes when the added label is literally "bug",
+    # even though the workflow itself triggers on ANY label being added.
+    # Note: no ${{ }} wrapper is strictly required around expressions used
+    # directly as the entire value of "if:" — GitHub Actions auto-evaluates
+    # it as an expression in that specific position, though ${{ }} is still
+    # valid and commonly used for consistency with other fields.
+
     runs-on: ubuntu-latest
+
     permissions:
       issues: write
+      # Needed to post a comment via `gh issue comment`.
+
     steps:
       - name: Add comment
         run: gh issue comment "$NUMBER" --body "$BODY"
+        # `gh issue comment <number> --body "<text>"` posts a new comment on
+        # the given issue using the GitHub CLI (pre-installed on GitHub-hosted
+        # runners, same as the label_issues.yml example).
+
         env:
           GH_REPO: ${{github.repository}}
+          # Repo in "owner/repo" format, required by gh CLI to know where to
+          # operate.
+
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          # Auto-generated, auto-expiring token, scoped by "permissions:"
+          # above — required by gh CLI for authentication.
+
           NUMBER: ${{github.event.issue.number}}
+          # The number of the issue that was labeled, pulled from the event
+          # payload.
+
           BODY: >
             This issue is available for anyone to work on.
-                        **Make sure to reference this issue in your pull request.**
-                        :sparkles: Thank you for your contribution! :sparkles:
 
+            **Make sure to reference this issue in your pull request.**
 
-
+            :sparkles: Thank you for your contribution! :sparkles:
+          # "BODY:" holds the comment text. The ">" after the colon is YAML's
+          # "folded block scalar" indicator:
+          #   - Every following indented line is treated as part of this one
+          #     string value.
+          #   - Single line breaks within the block get FOLDED into spaces
+          #     (so a long paragraph you wrap across lines in the YAML source
+          #     stays as one line of actual text).
+          #   - A BLANK line between paragraphs (as used here) is preserved
+          #     as an actual newline/paragraph break in the resulting string
+          #     — this is how the three "paragraphs" here (intro line, bold
+          #     instruction, sparkles thank-you) end up on separate lines in
+          #     the posted GitHub comment instead of being squashed together.
+          #   - Alternative would be "|" (literal block scalar), which keeps
+          #     every line break exactly as-is instead of folding — useful
+          #     for things like preformatted code blocks.
+          # Markdown syntax works here since this text is posted as a GitHub
+          # comment body: "**text**" renders bold, ":sparkles:" renders as
+          # the 🎉-style GitHub emoji shortcode.
